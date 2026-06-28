@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ree_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ree_balance
+      POSTGRES_USER: ree_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-ree_secret_2024}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ree_user -d ree_balance']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ree_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ree_balance
+      DB_USER: ree_user
+      DB_PASSWORD: ${DB_PASSWORD:-ree_secret_2024}
+      REE_API_BASE_URL: https://apidatos.ree.es
+      INGESTION_CRON: '0 * * * *'
+      INGESTION_INITIAL_DAYS: 30
+    ports:
+      - '3001:3001'
+    volumes:
+      - ./backend/src:/app/src
+      - /app/node_modules
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ree_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/index.html:/app/index.html
+      - /app/node_modules
+    environment:
+      VITE_API_URL: 'http://backend:3001'
+
+volumes:
+  postgres_data:
