@@ -50,15 +50,19 @@ export function useHealthStatus() {
 
 /**
  * Convierte las entradas en datos para el AreaChart.
- * Excluye agregados (Generación renovable, Generación no renovable).
+ * Si se pasa `sourceType`, filtra por `energySource.type`.
+ * Sin `sourceType`, excluye agregados (Generación renovable, Generación no renovable).
  */
 export function toAreaChartData(
   entries: ReturnType<typeof useBalanceData>['data'],
+  sourceType?: string,
 ): ChartDataPoint[] {
   if (!entries?.data.length) return [];
 
-  const filtered = entries.data.filter(
-    (e) => !AGGREGATE_TYPES.includes(e.energySource.type),
+  const filtered = entries.data.filter((e) =>
+    sourceType
+      ? e.energySource.type === sourceType
+      : !AGGREGATE_TYPES.includes(e.energySource.type),
   );
 
   const map = new Map<string, ChartDataPoint>();
@@ -75,18 +79,27 @@ export function toAreaChartData(
 
 /**
  * Convierte las entradas en datos para el PieChart.
- * Filtra por groupId y excluye agregados.
+ * Si se pasa `sourceType`, filtra por `energySource.type`.
+ * Sin `sourceType`, filtra por `groupId` (comportamiento original, default 'Renovable').
  */
 export function toPieData(
   entries: ReturnType<typeof useBalanceData>['data'],
-  groupId: string = 'Renovable',
+  sourceTypeOrGroupId: string = 'Renovable',
 ): PieSlice[] {
   if (!entries?.data.length) return [];
 
   const totals = new Map<string, { value: number; color?: string }>();
 
+  // Detecta si el parámetro es un groupId (valores conocidos) o un sourceType
+  const KNOWN_GROUP_IDS = ['Renovable', 'No-Renovable', 'Almacenamiento', 'Demanda en b.c.'];
+  const isGroupId = KNOWN_GROUP_IDS.includes(sourceTypeOrGroupId);
+
   for (const entry of entries.data) {
-    if ((entry.energySource.groupId ?? '') !== groupId) continue;
+    const matches = isGroupId
+      ? (entry.energySource.groupId ?? '') === sourceTypeOrGroupId
+      : entry.energySource.type === sourceTypeOrGroupId;
+
+    if (!matches) continue;
     if (AGGREGATE_TYPES.includes(entry.energySource.type)) continue;
 
     const existing = totals.get(entry.energySource.title);
@@ -105,15 +118,22 @@ export function toPieData(
 }
 
 /**
- * Devuelve los títulos únicos de fuentes excluendo agregados.
+ * Devuelve los títulos únicos de fuentes.
+ * Si se pasa `sourceType`, filtra por `energySource.type`.
+ * Sin `sourceType`, excluye agregados.
  */
 export function getSourceTitles(
   entries: ReturnType<typeof useBalanceData>['data'],
+  sourceType?: string,
 ): string[] {
   if (!entries?.data.length) return [];
   const titles = new Set(
     entries.data
-      .filter((e) => !AGGREGATE_TYPES.includes(e.energySource.type))
+      .filter((e) =>
+        sourceType
+          ? e.energySource.type === sourceType
+          : !AGGREGATE_TYPES.includes(e.energySource.type),
+      )
       .map((e) => e.energySource.title),
   );
   return Array.from(titles);
