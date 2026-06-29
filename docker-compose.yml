@@ -59,7 +59,7 @@ services:
       - ./frontend/index.html:/app/index.html
       - /app/node_modules
     environment:
-      VITE_API_URL: 'http://backend:3001'
+      VITE_API_URL: 'http://localhost:3001'
 
 volumes:
   postgres_data:

@@ -7,8 +7,7 @@ import {
 } from '../types/balance.types';
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? '';
-// const API = `${BASE_URL}/api/v1`;
-const API = `http://localhost:3001/api/v1`;
+const API = `${BASE_URL}/api/v1`;
 
 async function apiFetch<T>(path: string, params?: Record<string, string>): Promise<T> {
   const url = new URL(`${API}${path}`, window.location.origin);
